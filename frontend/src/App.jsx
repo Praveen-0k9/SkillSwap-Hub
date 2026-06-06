@@ -15,7 +15,7 @@ import { Analytics } from "./pages/Analytics";
 import { Settings } from "./pages/Settings";
 import { Admin } from "./pages/Admin";
 import { Profile } from "./pages/Profile";
-import { mockNotifications, initialChatLogs, mockUsers, mockSkills } from "./data/mockData";
+import { mockNotifications, initialChatLogs, mockUsers, mockSkills, currentUser } from "./data/mockData";
 
 function AppLayout({ children, unreadNotifications, unreadMessages }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -47,6 +47,7 @@ export default function App() {
   const [conversations, setConversations] = useState(initialChatLogs);
   const [selectedChatUserId, setSelectedChatUserId] = useState(mockUsers[0].id);
   const [skills, setSkills] = useState(mockSkills);
+  const [user, setUser] = useState(currentUser);
 
   const unreadNotifications = notifications.filter((n) => !n.read).length;
   const unreadMessages = Object.values(conversations).reduce((acc, msgs) => {
@@ -129,7 +130,7 @@ export default function App() {
           path="/settings"
           element={
             <AppLayout unreadNotifications={unreadNotifications} unreadMessages={unreadMessages}>
-              <Settings />
+              <Settings user={user} setUser={setUser} />
             </AppLayout>
           }
         />
@@ -145,7 +146,7 @@ export default function App() {
           path="/profile"
           element={
             <AppLayout unreadNotifications={unreadNotifications} unreadMessages={unreadMessages}>
-              <Profile />
+              <Profile user={user} />
             </AppLayout>
           }
         />

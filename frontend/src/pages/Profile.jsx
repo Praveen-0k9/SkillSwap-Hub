@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Star, Mail, Calendar, Edit, BookOpen, Users, Award, MessageSquare, CheckCircle, X, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { currentUser } from "../data/mockData";
 
 const tabs = ["Skills", "Reviews", "Activity"];
 
@@ -47,7 +46,7 @@ const initialSkills = [
   { name: "UI/UX Design", category: "Design", rating: 4.8, learners: 15 },
 ];
 
-export function Profile() {
+export function Profile({ user }) {
   const [tab, setTab] = useState("Skills");
   const [skills, setSkills] = useState(initialSkills);
   
@@ -86,6 +85,14 @@ export function Profile() {
     setIsAdding(false);
   };
 
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-muted-foreground">Loading user profile...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative space-y-5">
       {/* Dynamic Toast Feedback */}
@@ -109,7 +116,7 @@ export function Profile() {
           <div className="flex-shrink-0">
             <div className="relative w-20 h-20 mx-auto sm:mx-0">
               <div className="w-20 h-20 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center text-3xl font-bold text-primary select-none">
-                {currentUser.name[0]}
+                {user.name ? user.name[0] : "A"}
               </div>
               <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-card" />
             </div>
@@ -120,8 +127,8 @@ export function Profile() {
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
               <div className="min-w-0">
                 <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                  <h2 className="text-xl font-bold text-foreground truncate">{currentUser.name}</h2>
-                  {currentUser.verified && (
+                  <h2 className="text-xl font-bold text-foreground truncate">{user.name}</h2>
+                  {user.verified && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold tracking-wide flex-shrink-0">
                       <CheckCircle size={10} />
                       Verified
@@ -131,11 +138,11 @@ export function Profile() {
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Mail size={12} />
-                    <span className="truncate">{currentUser.email}</span>
+                    <span className="truncate">{user.email}</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar size={12} />
-                    Joined {new Date(currentUser.joinedDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                    Joined {user.joinedDate ? new Date(user.joinedDate).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
                   </span>
                 </div>
               </div>
@@ -149,13 +156,13 @@ export function Profile() {
               </Link>
             </div>
 
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">{currentUser.bio}</p>
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">{user.bio}</p>
 
             {/* Stats row */}
             <div className="flex flex-wrap justify-center sm:justify-start gap-5 pt-3 border-t border-border/60">
               {[
-                { label: "Rating", value: String(currentUser.rating), icon: <Star size={14} className="text-yellow-400 fill-yellow-400" /> },
-                { label: "Reviews", value: String(currentUser.reviewCount), icon: null },
+                { label: "Rating", value: String(user.rating), icon: <Star size={14} className="text-yellow-400 fill-yellow-400" /> },
+                { label: "Reviews", value: String(user.reviewCount), icon: null },
                 { label: "Skills", value: String(skills.length), icon: null },
                 { label: "Collaborations", value: "31", icon: null },
               ].map((s) => (
