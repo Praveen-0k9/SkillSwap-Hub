@@ -12,6 +12,7 @@ import { Notifications } from "./pages/Notifications";
 import { Bookmarks } from "./pages/Bookmarks";
 import { Connections } from "./pages/Connections";
 import { Analytics } from "./pages/Analytics";
+import { Settings } from "./pages/Settings";
 import { mockNotifications, initialChatLogs, mockUsers, mockSkills } from "./data/mockData";
 
 function AppLayout({ children, unreadNotifications, unreadMessages }) {
@@ -119,6 +120,14 @@ export default function App() {
           element={
             <AppLayout unreadNotifications={unreadNotifications} unreadMessages={unreadMessages}>
               <Analytics />
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <AppLayout unreadNotifications={unreadNotifications} unreadMessages={unreadMessages}>
+              <Settings />
             </AppLayout>
           }
         />
