@@ -1,7 +1,7 @@
 import { Search, Menu } from "lucide-react";
 import { Link } from "react-router-dom";
 
-export function Navbar({ onMenuClick }) {
+export function Navbar({ onMenuClick, user }) {
   return (
     <header className="h-14 border-b border-border bg-background flex items-center px-4 lg:px-6 gap-4 sticky top-0 z-30">
       <button
@@ -21,9 +21,17 @@ export function Navbar({ onMenuClick }) {
         </div>
 
         <Link to="/profile" className="flex-shrink-0 ml-1">
-          <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary hover:bg-primary/25 transition-colors select-none">
-            A
-          </div>
+          {user && user.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name}
+              className="w-7 h-7 rounded-full object-cover border border-primary/30 hover:border-primary/50 transition-colors"
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary hover:bg-primary/25 transition-colors select-none uppercase">
+              {user && user.name ? user.name[0] : "A"}
+            </div>
+          )}
         </Link>
       </div>
     </header>

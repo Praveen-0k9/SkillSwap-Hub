@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { User, Lock, Bell, Shield, Camera, CheckCircle2, AlertCircle, X } from "lucide-react";
 
 const sections = [
@@ -56,6 +56,9 @@ export function Settings({ user, setUser }) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [bio, setBio] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState("");
+
+  const fileInputRef = useRef(null);
 
   // Sync inputs with user prop on mount or update
   useEffect(() => {
@@ -65,8 +68,49 @@ export function Settings({ user, setUser }) {
       setLastName(parts.slice(1).join(" ") || "");
       setEmail(user.email || "");
       setBio(user.bio || "");
+      setAvatarPreview(user.avatar || "");
+      
+      // Sync security
+      setEnable2FA(user.twoFactorEnabled || false);
+      
+      // Sync notifications
+      if (user.notifications) {
+        setNotifications({
+          collabRequests: user.notifications.collabRequests ?? true,
+          newMessages: user.notifications.newMessages ?? true,
+          reviews: user.notifications.reviews ?? true,
+          weeklyDigest: user.notifications.weeklyDigest ?? false,
+          marketing: user.notifications.marketing ?? false,
+        });
+      }
+      
+      // Sync privacy
+      if (user.privacy) {
+        setPrivacy({
+          profileVisibility: user.privacy.profileVisibility ?? true,
+          showOnlineStatus: user.privacy.showOnlineStatus ?? true,
+          allowDMs: user.privacy.allowDMs ?? true,
+          showEmail: user.privacy.showEmail ?? false,
+        });
+      }
     }
   }, [user]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("File is too large. Max size is 2MB.", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Security tab states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -107,22 +151,40 @@ export function Settings({ user, setUser }) {
     }, 4000);
   };
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault();
     if (isSavingProfile) return;
 
     setIsSavingProfile(true);
-    // Simulate API save timeout
-    setTimeout(() => {
-      setUser(prev => ({
-        ...prev,
-        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-        email: email.trim(),
-        bio: bio.trim(),
-      }));
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/auth/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          email: email.trim(),
+          bio: bio.trim(),
+          avatar: avatarPreview,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        showToast("Profile settings saved successfully!");
+      } else {
+        showToast(data.message || "Failed to save profile settings", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.", "error");
+    } finally {
       setIsSavingProfile(false);
-      showToast("Profile settings saved successfully!");
-    }, 1200);
+    }
   };
 
   const handleCancelProfile = () => {
@@ -132,61 +194,148 @@ export function Settings({ user, setUser }) {
       setLastName(parts.slice(1).join(" ") || "");
       setEmail(user.email || "");
       setBio(user.bio || "");
+      setAvatarPreview(user.avatar || "");
     }
   };
 
-  const handleSecuritySave = (e) => {
+  const handleSecuritySave = async (e) => {
     e.preventDefault();
     if (isSavingSecurity) return;
 
-    if (!currentPassword) {
-      showToast("Please enter your current password to proceed.", "error");
+    if (newPassword && !currentPassword) {
+      showToast("Please enter your current password to proceed with password change.", "error");
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (newPassword && newPassword !== confirmPassword) {
       showToast("New password confirmation does not match.", "error");
       return;
     }
 
     setIsSavingSecurity(true);
-    // Simulate API password change
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/auth/settings/security", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          enable2FA,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        showToast(data.message || "Security settings updated successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        showToast(data.message || "Failed to update security settings", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.", "error");
+    } finally {
       setIsSavingSecurity(false);
-      showToast("Password updated successfully!");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }, 1200);
+    }
   };
 
-  const handleNotificationsSave = (e) => {
+  const handleNotificationsSave = async (e) => {
     e.preventDefault();
     if (isSavingNotifications) return;
 
     setIsSavingNotifications(true);
-    // Simulate preferences save
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/auth/settings/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          notifications,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        showToast(data.message || "Notification preferences updated successfully!");
+      } else {
+        showToast(data.message || "Failed to save notifications settings", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.", "error");
+    } finally {
       setIsSavingNotifications(false);
-      showToast("Notification preferences updated!");
-    }, 1200);
+    }
   };
 
-  const handlePrivacySave = (e) => {
+  const handlePrivacySave = async (e) => {
     e.preventDefault();
     if (isSavingPrivacy) return;
 
     setIsSavingPrivacy(true);
-    // Simulate privacy settings save
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/auth/settings/privacy", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          privacy,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        showToast(data.message || "Privacy settings updated successfully!");
+      } else {
+        showToast(data.message || "Failed to save privacy settings", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.", "error");
+    } finally {
       setIsSavingPrivacy(false);
-      showToast("Privacy settings saved!");
-    }, 1200);
+    }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     const confirmDelete = window.confirm("Are you sure you want to delete your account? This action cannot be undone.");
-    if (confirmDelete) {
-      showToast("Account deletion requested.", "error");
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/auth/profile", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.removeItem("token");
+        setUser(null);
+        showToast("Account deleted successfully.");
+        window.location.href = "/";
+      } else {
+        showToast(data.message || "Failed to delete account.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.", "error");
     }
   };
 
@@ -257,16 +406,32 @@ export function Settings({ user, setUser }) {
               {/* Avatar Photo */}
               <div className="flex items-center gap-5">
                 <div className="relative flex-shrink-0">
-                  <div className="w-18 h-18 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-2xl font-bold text-primary select-none">
-                    {firstName ? firstName[0] : "A"}
-                  </div>
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Profile Preview"
+                      className="w-18 h-18 rounded-full object-cover border border-primary/30"
+                    />
+                  ) : (
+                    <div className="w-18 h-18 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-2xl font-bold text-primary select-none">
+                      {firstName ? firstName[0] : "A"}
+                    </div>
+                  )}
                   <button
                     type="button"
                     disabled={isSavingProfile}
+                    onClick={() => fileInputRef.current?.click()}
                     className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-card hover:bg-primary/90 transition-colors shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Camera size={12} className="text-white" />
                   </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Profile photo</p>

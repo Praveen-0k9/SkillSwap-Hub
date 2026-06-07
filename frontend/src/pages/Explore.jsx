@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Star, Bookmark, BookmarkCheck, Filter } from "lucide-react";
 import { skillCategories } from "../data/mockData";
 
@@ -12,20 +12,61 @@ const levelColors = {
 export function Explore({ skills, setSkills }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  const [searchSkills, setSearchSkills] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filtered = skills.filter((s) => {
-    const matchCat = category === "all" || s.category === category;
-    const matchQ =
-      !query ||
-      s.name.toLowerCase().includes(query.toLowerCase()) ||
-      s.description.toLowerCase().includes(query.toLowerCase());
-    return matchCat && matchQ;
-  });
+  // Fetch filtered skills from backend
+  const fetchFilteredSkills = async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.append("search", query);
+      if (category && category !== "all") params.append("category", category);
+      
+      const response = await fetch(`http://localhost:5000/api/skills?${params.toString()}`);
+      const data = await response.json();
+      if (response.ok && data.skills) {
+        setSearchSkills(data.skills);
+      }
+    } catch (err) {
+      console.error("Failed to fetch skills:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const toggleBookmark = (id) => {
-    setSkills((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, bookmarked: !s.bookmarked } : s))
-    );
+  // Debounced search trigger
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      fetchFilteredSkills();
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [query, category]);
+
+  // Toggle bookmark on backend and update states
+  const toggleBookmark = async (skillId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/skills/${skillId}/bookmark`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        // Update local search list
+        setSearchSkills((prev) =>
+          prev.map((s) => (s._id === skillId || s.id === skillId ? { ...s, bookmarked: data.skill.bookmarked } : s))
+        );
+        // Sync with global skills list (used by Bookmarks page)
+        setSkills((prev) =>
+          prev.map((s) => (s._id === skillId || s.id === skillId ? { ...s, bookmarked: data.skill.bookmarked } : s))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to toggle bookmark:", err);
+    }
   };
 
   return (
@@ -66,23 +107,44 @@ export function Explore({ skills, setSkills }) {
 
       {/* Results count */}
       <p className="text-xs text-muted-foreground">
-        {filtered.length} skill{filtered.length !== 1 ? "s" : ""} found
+        {isLoading ? "Searching..." : `${searchSkills.length} skill${searchSkills.length !== 1 ? "s" : ""} found`}
       </p>
 
       {/* Grid */}
-      {filtered.length > 0 ? (
+      {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((skill) => {
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-card border border-border rounded-lg p-5 flex flex-col h-48 animate-pulse">
+              <div className="flex justify-between mb-3">
+                <div className="w-24 h-5 bg-muted rounded-full" />
+                <div className="w-6 h-6 bg-muted rounded" />
+              </div>
+              <div className="w-3/4 h-6 bg-muted rounded mb-2" />
+              <div className="w-full h-12 bg-muted rounded mb-4" />
+              <div className="flex justify-between items-center mt-auto pt-4 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-muted" />
+                  <div className="w-16 h-3 bg-muted rounded" />
+                </div>
+                <div className="w-12 h-3 bg-muted rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : searchSkills.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {searchSkills.map((skill) => {
             const isBookmarked = skill.bookmarked;
+            const skillId = skill._id || skill.id;
             return (
-              <div key={skill.id} className="bg-card border border-border rounded-lg p-5 flex flex-col hover:border-border/80 transition-colors">
+              <div key={skillId} className="bg-card border border-border rounded-lg p-5 flex flex-col hover:border-border/80 transition-colors">
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium truncate">
                     {skill.category}
                   </span>
                   <button
-                    onClick={() => toggleBookmark(skill.id)}
+                    onClick={() => toggleBookmark(skillId)}
                     className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-110 cursor-pointer"
                   >
                     {isBookmarked ? (
@@ -116,9 +178,9 @@ export function Explore({ skills, setSkills }) {
                 <div className="flex items-center justify-between gap-2 pt-4 border-t border-border mt-auto">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0 uppercase">
-                      {skill.userName[0]}
+                      {skill.userName ? skill.userName[0] : "?"}
                     </div>
-                    <span className="text-xs text-muted-foreground truncate">{skill.userName}</span>
+                    <span className="text-xs text-muted-foreground truncate">{skill.userName || "Unknown User"}</span>
                   </div>
                   <button className="flex-shrink-0 text-xs font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap cursor-pointer">
                     View details

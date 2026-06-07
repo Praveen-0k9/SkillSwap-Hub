@@ -11,10 +11,27 @@ const levelColors = {
 export function Bookmarks({ skills, setSkills }) {
   const visible = skills.filter((s) => s.bookmarked);
 
-  const handleRemoveBookmark = (id) => {
-    setSkills((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, bookmarked: false } : s))
-    );
+  const handleRemoveBookmark = async (skillId) => {
+    if (!skillId) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/skills/${skillId}/bookmark`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        setSkills((prev) =>
+          prev.map((s) =>
+            s._id === skillId || s.id === skillId
+              ? { ...s, bookmarked: false }
+              : s
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to remove bookmark:", err);
+    }
   };
 
   return (
@@ -45,60 +62,63 @@ export function Bookmarks({ skills, setSkills }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {visible.map((skill) => (
-            <div
-              key={skill.id}
-              className="bg-card border border-border rounded-lg p-5 flex flex-col hover:border-border/80 transition-colors"
-            >
-              {/* Top row */}
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium truncate">
-                  {skill.category}
-                </span>
-                <button
-                  onClick={() => handleRemoveBookmark(skill.id)}
-                  className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-
-              {/* Title */}
-              <h3 className="text-base font-semibold text-foreground mb-1.5 line-clamp-1">{skill.name}</h3>
-
-              {/* Description */}
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1 mb-4">
-                {skill.description}
-              </p>
-
-              {/* Meta */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center gap-1">
-                  <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                  <span className="text-xs font-medium text-foreground">{skill.rating}</span>
+          {visible.map((skill) => {
+            const skillId = skill._id || skill.id;
+            return (
+              <div
+                key={skillId}
+                className="bg-card border border-border rounded-lg p-5 flex flex-col hover:border-border/80 transition-colors"
+              >
+                {/* Top row */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium truncate">
+                    {skill.category}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveBookmark(skillId)}
+                    className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
-                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${levelColors[skill.level] ?? ""}`}>
-                  {skill.level}
-                </span>
-              </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between gap-2 pt-4 border-t border-border mt-auto">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0 uppercase">
-                    {skill.userName[0]}
+                {/* Title */}
+                <h3 className="text-base font-semibold text-foreground mb-1.5 line-clamp-1">{skill.name}</h3>
+
+                {/* Description */}
+                <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1 mb-4">
+                  {skill.description}
+                </p>
+
+                {/* Meta */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-1">
+                    <Star size={12} className="text-yellow-400 fill-yellow-400" />
+                    <span className="text-xs font-medium text-foreground">{skill.rating}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground truncate">{skill.userName}</span>
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${levelColors[skill.level] ?? ""}`}>
+                    {skill.level}
+                  </span>
                 </div>
-                <Link
-                  to="/explore"
-                  className="flex-shrink-0 text-xs font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
-                >
-                  View skill
-                </Link>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between gap-2 pt-4 border-t border-border mt-auto">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0 uppercase">
+                      {skill.userName ? skill.userName[0] : "?"}
+                    </div>
+                    <span className="text-xs text-muted-foreground truncate">{skill.userName || "Unknown User"}</span>
+                  </div>
+                  <Link
+                    to="/explore"
+                    className="flex-shrink-0 text-xs font-medium text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                  >
+                    View skill
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

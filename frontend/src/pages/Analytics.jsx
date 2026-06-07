@@ -1,47 +1,110 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, Users, Star, MessageSquare, TrendingUp, TrendingDown, Calendar } from "lucide-react";
 
-const activityData = [
-  { day: "Mon", views: 124, x: 40, y: 77 },
-  { day: "Tue", views: 156, x: 113.3, y: 53 },
-  { day: "Wed", views: 189, x: 186.7, y: 28.25 },
-  { day: "Thu", views: 142, x: 260.0, y: 63.5 },
-  { day: "Fri", views: 178, x: 333.3, y: 36.5 },
-  { day: "Sat", views: 98, x: 406.7, y: 96.5 },
-  { day: "Sun", views: 87, x: 480.0, y: 104.75 },
-];
-
-const skillData = [
-  { name: "React", pct: 92 },
-  { name: "TypeScript", pct: 78 },
-  { name: "Node.js", pct: 65 },
-  { name: "Python", pct: 54 },
-  { name: "UI/UX", pct: 48 },
-];
-
-const metrics = [
-  { label: "Profile Views", value: "2,847", delta: "+12%", up: true, icon: Eye, color: "text-primary" },
-  { label: "New Connections", value: "142", delta: "+8%", up: true, icon: Users, color: "text-green-400" },
-  { label: "Avg Rating", value: "4.8", delta: "+15%", up: true, icon: Star, color: "text-yellow-400" },
-  { label: "Messages Sent", value: "68", delta: "-3%", up: false, icon: MessageSquare, color: "text-blue-400" },
-];
-
-const skills = [
-  { skill: "React Advanced Patterns", views: 342, rating: 4.9, engagement: 85 },
-  { skill: "TypeScript Best Practices", views: 267, rating: 4.6, engagement: 72 },
-  { skill: "Node.js Development", views: 198, rating: 4.7, engagement: 68 },
-  { skill: "Python for Data Analysis", views: 156, rating: 4.8, engagement: 61 },
-];
-
-const milestones = [
-  { icon: Star, label: "Top Rated", sub: "Reached 4.8+ rating", color: "text-yellow-400 bg-yellow-400/10" },
-  { icon: Users, label: "100 Connections", sub: "Network milestone", color: "text-primary bg-primary/10" },
-  { icon: MessageSquare, label: "Active Communicator", sub: "500+ messages sent", color: "text-blue-400 bg-blue-400/10" },
-  { icon: Calendar, label: "6 Month Streak", sub: "Consistent activity", color: "text-green-400 bg-green-400/10" },
-];
-
-export function Analytics() {
+export function Analytics({ user }) {
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [hoveredIdx, setHoveredIdx] = useState(null);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      if (!user) return;
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:5000/api/analytics/overview", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setAnalyticsData(data);
+        }
+      } catch (err) {
+        console.error("Error loading analytics data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [user]);
+
+  if (!user || isLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">Loading analytics details...</p>
+      </div>
+    );
+  }
+
+  // Extract dynamically calculated stats
+  const totalViews = analyticsData ? analyticsData.totalViews : 0;
+  const newConnectionsCount = analyticsData ? analyticsData.newConnectionsCount : 0;
+  const avgRating = analyticsData ? analyticsData.avgRating : 5.0;
+  const messagesSentCount = analyticsData ? analyticsData.messagesSentCount : 0;
+
+  const metrics = [
+    { label: "Profile Views", value: String(totalViews), delta: totalViews > 100 ? "+15% growth" : "Steady", up: true, icon: Eye, color: "text-primary" },
+    { label: "Active Connections", value: String(newConnectionsCount), delta: newConnectionsCount > 0 ? "Connected" : "No contacts", up: true, icon: Users, color: "text-green-400" },
+    { label: "Avg Rating", value: String(avgRating), delta: "from reviews", up: true, icon: Star, color: "text-yellow-400" },
+    { label: "Messages Sent", value: String(messagesSentCount), delta: "Direct messages", up: true, icon: MessageSquare, color: "text-blue-400" },
+  ];
+
+  // Map user's real skills to Skill Demand Score (max 5 items)
+  const skillData = analyticsData ? analyticsData.skillDemand : [];
+
+  // Map user's real skills to Skills Performance list
+  const skillsPerformance = analyticsData ? analyticsData.skillsPerformance : [];
+
+  // Generate dynamic milestones
+  const milestones = [
+    { icon: Star, label: "Top Rated Status", sub: user.rating >= 4.5 ? `Maintained high ${user.rating} rating` : `Keep improving to reach 4.8+`, color: "text-yellow-400 bg-yellow-400/10" },
+    { icon: Users, label: `${newConnectionsCount} Connection${newConnectionsCount !== 1 ? 's' : ''}`, sub: "Active networking milestone", color: "text-primary bg-primary/10" },
+    { icon: MessageSquare, label: "Active Collaborator", sub: `${user.reviewCount || 0} feedback reviews received`, color: "text-blue-400 bg-blue-400/10" },
+    { icon: Calendar, label: "Joined Member", sub: `Joined in ${user.joinedDate ? new Date(user.joinedDate).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "recently"}`, color: "text-green-400 bg-green-400/10" },
+  ];
+
+  // Curved line chart points based on user's real views
+  const rawWeeklyViews = analyticsData ? analyticsData.weeklyViews : [
+    { day: "Mon", views: 30 },
+    { day: "Tue", views: 40 },
+    { day: "Wed", views: 45 },
+    { day: "Thu", views: 35 },
+    { day: "Fri", views: 50 },
+    { day: "Sat", views: 25 },
+    { day: "Sun", views: 20 },
+  ];
+
+  // Calculate SVG coordinates dynamically
+  const maxViewValue = Math.max(...rawWeeklyViews.map(v => v.views), 100);
+  const activityData = rawWeeklyViews.map((d, idx) => {
+    const x = 40 + idx * 73.3; // 40 to 480 divided equally for 7 points
+    // Map view values between y = 25 (max views) and y = 165 (min views)
+    const y = 165 - (d.views / maxViewValue) * 140;
+    return {
+      day: d.day,
+      views: d.views,
+      x,
+      y
+    };
+  });
+
+  // Ensure svg chart coordinates are constrained properly
+  activityData.forEach(d => {
+    if (d.y < 25) d.y = 25;
+    if (d.y > 165) d.y = 165;
+  });
+
+  const pathD = `M ${activityData[0].x},${activityData[0].y} ` + 
+    activityData.slice(1).map((d, i) => {
+      const prev = activityData[i];
+      const cpX1 = prev.x + 36.6;
+      const cpY1 = prev.y;
+      const cpX2 = d.x - 36.6;
+      const cpY2 = d.y;
+      return `C ${cpX1},${cpY1} ${cpX2},${cpY2} ${d.x},${d.y}`;
+    }).join(" ");
+
+  const fillD = `${pathD} L 480,170 L 40,170 Z`;
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -141,13 +204,13 @@ export function Analytics() {
 
               {/* Gradient Area Fill */}
               <path
-                d="M 40,77 C 76.6,77 76.6,53 113.3,53 C 150,53 150,28.25 186.7,28.25 C 223.4,28.25 223.4,63.5 260,63.5 C 296.7,63.5 296.7,36.5 333.3,36.5 C 370,36.5 370,96.5 406.7,96.5 C 443.4,96.5 443.4,104.75 480,104.75 L 480,170 L 40,170 Z"
+                d={fillD}
                 fill="url(#views-gradient)"
               />
 
               {/* Chart Curved Line */}
               <path
-                d="M 40,77 C 76.6,77 76.6,53 113.3,53 C 150,53 150,28.25 186.7,28.25 C 223.4,28.25 223.4,63.5 260,63.5 C 296.7,63.5 296.7,36.5 333.3,36.5 C 370,36.5 370,96.5 406.7,96.5 C 443.4,96.5 443.4,104.75 480,104.75"
+                d={pathD}
                 fill="none"
                 stroke="#6366F1"
                 strokeWidth={2.5}
@@ -247,23 +310,29 @@ export function Analytics() {
             <h3 className="text-sm font-semibold text-foreground">Skills Performance</h3>
           </div>
           <div className="divide-y divide-border">
-            {skills.map((item, i) => (
-              <div key={i} className="px-5 py-4.5 hover:bg-muted/10 transition-colors">
-                <div className="flex items-center justify-between gap-4 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{item.skill}</p>
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Eye size={11} />{item.views} views</span>
-                      <span className="flex items-center gap-1"><Star size={11} className="text-yellow-400 fill-yellow-400" />{item.rating}</span>
-                    </div>
-                  </div>
-                  <span className="flex-shrink-0 text-sm font-semibold text-foreground">{item.engagement}%</span>
-                </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: `${item.engagement}%` }} />
-                </div>
+            {skillsPerformance.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No performance data yet. Add skills and receive views/reviews to see statistics!
               </div>
-            ))}
+            ) : (
+              skillsPerformance.map((item, i) => (
+                <div key={i} className="px-5 py-4.5 hover:bg-muted/10 transition-colors">
+                  <div className="flex items-center justify-between gap-4 mb-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{item.skill}</p>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Eye size={11} />{item.views} views</span>
+                        <span className="flex items-center gap-1"><Star size={11} className="text-yellow-400 fill-yellow-400" />{item.rating}</span>
+                      </div>
+                    </div>
+                    <span className="flex-shrink-0 text-sm font-semibold text-foreground">{item.engagement}%</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${item.engagement}%` }} />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

@@ -1,36 +1,101 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, Users, Star, TrendingUp, Clock, MessageSquare, ArrowRight, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
-import { currentUser, mockUsers, mockSkills } from "../data/mockData";
+import { mockUsers, mockSkills } from "../data/mockData";
 
-const stats = [
-  { label: "Skills Listed", value: "8", delta: "+2 this month", icon: BookOpen, color: "text-primary" },
-  { label: "Connections", value: "248", delta: "+12 this week", icon: Users, color: "text-green-400" },
-  { label: "Collaborations", value: "31", delta: "4 active now", icon: TrendingUp, color: "text-yellow-400" },
-  { label: "Avg Rating", value: "4.8", delta: "from 24 reviews", icon: Star, color: "text-orange-400" },
-];
+export function Dashboard({ user }) {
+  const [skills, setSkills] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [globalSkills, setGlobalSkills] = useState([]);
+  const [chatRooms, setChatRooms] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-const activity = [
-  { user: mockUsers[0], action: "started collaborating on", subject: "Advanced React Patterns", time: "2h ago" },
-  { user: mockUsers[1], action: "left a review for", subject: "TypeScript Best Practices", time: "5h ago" },
-  { user: mockUsers[2], action: "sent you a connection request", subject: "", time: "1d ago" },
-  { user: mockUsers[0], action: "bookmarked your skill", subject: "Node.js API Development", time: "2d ago" },
-];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return;
+      try {
+        const token = localStorage.getItem("token");
 
-const progress = [
-  { skill: "React Advanced", pct: 75 },
-  { skill: "TypeScript", pct: 60 },
-  { skill: "UI/UX Design", pct: 45 },
-];
+        // 1. Fetch user's skills
+        const skillsRes = await fetch(`http://localhost:5000/api/skills?userId=${user.id || user._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const skillsData = await skillsRes.json();
+        
+        // 2. Fetch connections
+        const connRes = await fetch("http://localhost:5000/api/connections", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const connData = await connRes.json();
 
-export function Dashboard() {
+        // 3. Fetch activities
+        const actRes = await fetch(`http://localhost:5000/api/activities?userId=${user.id || user._id}`);
+        const actData = await actRes.json();
+
+        // 4. Fetch global trending skills
+        const globalRes = await fetch("http://localhost:5000/api/skills");
+        const globalData = await globalRes.json();
+
+        // 5. Fetch active chat rooms
+        const chatRoomsRes = await fetch("http://localhost:5000/api/chat/rooms", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const chatRoomsData = await chatRoomsRes.json();
+
+        if (skillsRes.ok) setSkills(skillsData.skills);
+        if (connRes.ok) setConnections(connData.connections);
+        if (actRes.ok) setActivities(actData.activities);
+        if (globalRes.ok) setGlobalSkills(globalData.skills);
+        if (chatRoomsRes.ok) setChatRooms(chatRoomsData);
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">Loading profile details...</p>
+      </div>
+    );
+  }
+
+  // Dynamic stats calculation
+  const skillsThisMonth = skills.filter(s => s.createdAt && new Date(s.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length;
+  const skillsDelta = skillsThisMonth > 0 ? `+${skillsThisMonth} this month` : "No new skills";
+
+  const connectionsThisWeek = connections.filter(c => c.connectedAt && new Date(c.connectedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length;
+  const connectionsDelta = connectionsThisWeek > 0 ? `+${connectionsThisWeek} this week` : "Stable count";
+
+  const activeChats = chatRooms.filter(room => room.lastMessage).length;
+  const chatsDelta = activeChats > 0 ? `${activeChats} active conversation${activeChats > 1 ? 's' : ''}` : "Start a chat";
+
+  const sortedTrendingSkills = [...globalSkills].sort((a, b) => {
+    const scoreA = (a.rating || 5.0) * 10 + (a.learners || 0);
+    const scoreB = (b.rating || 5.0) * 10 + (b.learners || 0);
+    return scoreB - scoreA;
+  });
+
+  const computedStats = [
+    { label: "Skills Listed", value: String(skills.length), delta: skillsDelta, icon: BookOpen, color: "text-primary" },
+    { label: "Connections", value: String(connections.length), delta: connectionsDelta, icon: Users, color: "text-green-400" },
+    { label: "Collaborations", value: String(chatRooms.length), delta: chatsDelta, icon: TrendingUp, color: "text-yellow-400" },
+    { label: "Avg Rating", value: String(user.rating || 5.0), delta: `from ${user.reviewCount || 0} reviews`, icon: Star, color: "text-orange-400" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-foreground">
-            Good morning, {currentUser.name.split(" ")[0]}
+            Good morning, {user.name ? user.name.split(" ")[0] : "User"}
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -47,7 +112,7 @@ export function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
+        {computedStats.map((stat) => {
           const Icon = stat.icon;
           return (
             <div key={stat.label} className="bg-card border border-border rounded-lg p-5">
@@ -68,34 +133,46 @@ export function Dashboard() {
         <div className="lg:col-span-2 bg-card border border-border rounded-lg">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
-            <Link to="/register" className="text-xs text-primary hover:text-primary/80 transition-colors">
+            <Link to="/profile" className="text-xs text-primary hover:text-primary/80 transition-colors">
               View all
             </Link>
           </div>
           <div className="divide-y divide-border">
-            {activity.map((item, i) => (
-              <div key={i} className="flex items-start gap-3 px-5 py-4">
-                <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0 uppercase">
-                  {item.user.name[0]}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-foreground leading-snug">
-                    <span className="font-medium">{item.user.name}</span>{" "}
-                    <span className="text-muted-foreground">{item.action}</span>
-                    {item.subject && (
-                      <>
-                        {" "}
-                        <span className="text-primary font-medium">{item.subject}</span>
-                      </>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                    <Clock size={11} />
-                    <span>{item.time}</span>
-                  </div>
-                </div>
+            {activities.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No recent activities. Add your first skill to get started!
               </div>
-            ))}
+            ) : (
+              activities.slice(0, 5).map((item, i) => {
+                const initials = user.name ? user.name[0] : "U";
+                const formattedTime = item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "just now";
+                return (
+                  <div key={item._id || i} className="flex items-start gap-3 px-5 py-4">
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full object-cover border border-border flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0 uppercase">
+                        {initials}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-foreground leading-snug">
+                        <span className="font-semibold text-slate-200">{user.name}</span>{" "}
+                        <span className="text-muted-foreground">{item.text}</span>
+                      </p>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                        <Clock size={11} />
+                        <span>{formattedTime}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -107,20 +184,30 @@ export function Dashboard() {
               <h3 className="text-sm font-semibold text-foreground">Learning Progress</h3>
             </div>
             <div className="px-5 py-4 space-y-4">
-              {progress.map((item) => (
-                <div key={item.skill}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm text-foreground">{item.skill}</span>
-                    <span className="text-xs text-muted-foreground">{item.pct}%</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
+              {skills.length === 0 ? (
+                <div className="text-center text-muted-foreground text-xs py-4">
+                  Add skills to track your learning progress.
                 </div>
-              ))}
+              ) : (
+                skills.slice(0, 3).map((item) => {
+                  const pctMap = { Beginner: 35, Intermediate: 65, Advanced: 85, Expert: 100 };
+                  const pct = pctMap[item.level] || 65;
+                  return (
+                    <div key={item._id}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm text-foreground">{item.name}</span>
+                        <span className="text-xs text-muted-foreground">{item.level || "Intermediate"} ({pct}%)</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -128,33 +215,47 @@ export function Dashboard() {
           <div className="bg-card border border-border rounded-lg">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground">Active Connections</h3>
-              <Link to="/register" className="text-xs text-primary hover:text-primary/80">
+              <Link to="/connections" className="text-xs text-primary hover:text-primary/80">
                 See all
               </Link>
             </div>
             <div className="px-5 py-3 space-y-1">
-              {mockUsers.slice(0, 4).map((user) => (
-                <div key={user.id} className="flex items-center gap-3 py-2 min-w-0">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground uppercase">
-                      {user.name[0]}
-                    </div>
-                    {user.online && (
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.skills[0]}</p>
-                  </div>
-                  <Link
-                    to="/register"
-                    className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  >
-                    <MessageSquare size={14} />
-                  </Link>
+              {connections.length === 0 ? (
+                <div className="text-center text-muted-foreground text-xs py-6">
+                  No active connections yet. Explore and send requests!
                 </div>
-              ))}
+              ) : (
+                connections.slice(0, 4).map((connUser) => (
+                  <div key={connUser.id} className="flex items-center gap-3 py-2 min-w-0">
+                    <div className="relative flex-shrink-0">
+                      {connUser.avatar ? (
+                        <img
+                          src={connUser.avatar}
+                          alt={connUser.name}
+                          className="w-8 h-8 rounded-full object-cover border border-border"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground uppercase">
+                          {connUser.name[0]}
+                        </div>
+                      )}
+                      {connUser.online && (
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">{connUser.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{connUser.skills[0] || "Collaborator"}</p>
+                    </div>
+                    <Link
+                      to="/chat"
+                      className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <MessageSquare size={14} />
+                    </Link>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -170,23 +271,31 @@ export function Dashboard() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border">
-          {mockSkills.slice(0, 4).map((skill) => (
-            <div key={skill.id} className="px-5 py-4">
+          {(sortedTrendingSkills.length > 0 ? sortedTrendingSkills : mockSkills).slice(0, 4).map((skill) => (
+            <div key={skill._id || skill.id} className="px-5 py-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="inline-block px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium truncate max-w-[80%]">
                   {skill.category}
                 </span>
                 <div className="flex items-center gap-1 flex-shrink-0 ml-1">
                   <Star size={11} className="text-yellow-400 fill-yellow-400" />
-                  <span className="text-xs text-muted-foreground">{skill.rating}</span>
+                  <span className="text-xs text-muted-foreground">{skill.rating || "5.0"}</span>
                 </div>
               </div>
               <h4 className="text-sm font-semibold text-foreground mb-1 truncate">{skill.name}</h4>
               <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{skill.description}</p>
               <div className="flex items-center gap-2 mt-3">
-                <div className="w-5 h-5 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0">
-                  {skill.userName[0]}
-                </div>
+                {skill.userAvatar ? (
+                  <img
+                    src={skill.userAvatar}
+                    alt={skill.userName}
+                    className="w-5 h-5 rounded-full object-cover border border-border flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0">
+                    {skill.userName ? skill.userName[0] : "U"}
+                  </div>
+                )}
                 <span className="text-xs text-muted-foreground truncate">{skill.userName}</span>
               </div>
             </div>

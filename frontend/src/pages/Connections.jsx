@@ -1,22 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MessageSquare, UserPlus, UserMinus, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { mockUsers } from "../data/mockData";
-
-const initialSuggestions = [
-  { id: "s1", name: "Oliver Martinez", initials: "OM", bio: "Frontend developer specializing in Vue.js and Nuxt", skills: ["Vue.js", "Nuxt", "JavaScript"], mutual: 5 },
-  { id: "s2", name: "Sophia Wang", initials: "SW", bio: "Product designer with a passion for accessibility", skills: ["Figma", "Design Systems", "UX"], mutual: 3 },
-  { id: "s3", name: "James Anderson", initials: "JA", bio: "Backend engineer focusing on microservices architecture", skills: ["Java", "Spring Boot", "Docker"], mutual: 7 },
-];
 
 const tabs = ["All", "Online", "Suggestions"];
 
 export function Connections({ setSelectedChatUserId }) {
   const [tab, setTab] = useState("All");
   const [query, setQuery] = useState("");
-  const [connections, setConnections] = useState(mockUsers);
-  const [suggestedList, setSuggestedList] = useState(initialSuggestions);
+  const [connections, setConnections] = useState([]);
+  const [suggestedList, setSuggestedList] = useState([]);
   const navigate = useNavigate();
+
+  const fetchConnections = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/connections", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setConnections(data.connections);
+        setSuggestedList(data.suggestions);
+      } else {
+        console.error("Failed to load connections:", data);
+      }
+    } catch (err) {
+      console.error("Failed to load connections:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchConnections();
+  }, []);
 
   const filtered = connections.filter((u) =>
     !query || u.name.toLowerCase().includes(query.toLowerCase())
@@ -30,24 +46,53 @@ export function Connections({ setSelectedChatUserId }) {
     navigate("/chat");
   };
 
-  const handleConnect = (user) => {
-    setSuggestedList((prev) => prev.filter((s) => s.id !== user.id));
-    setConnections((prev) => [
-      ...prev,
-      {
-        id: user.id,
-        name: user.name,
-        rating: 4.8,
-        bio: user.bio,
-        skills: user.skills,
-        online: true,
-        verified: true,
-      },
-    ]);
+  const handleConnect = async (user) => {
+    try {
+      console.log("Sending connection request to", user);
+      const response = await fetch("http://localhost:5000/api/connections/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          receiverId: user.id || user._id,
+          skillName: user.skills?.[0] || "skills",
+          message: "Let's connect and swap skills!",
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSuggestedList((prev) => prev.filter((s) => s.id !== user.id));
+        await fetchConnections();
+        alert(data.message || "Collaboration request sent successfully!");
+      } else {
+        console.error("Connection request error:", data);
+        alert(data.message || "Failed to send request.");
+      }
+    } catch (err) {
+      console.error("Failed to send connect request:", err);
+      alert("An error occurred while sending the request.");
+    }
   };
 
-  const handleDisconnect = (id) => {
-    setConnections((prev) => prev.filter((c) => c.id !== id));
+  const handleDisconnect = async (user) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/connections/${user.connectionId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        setConnections((prev) => prev.filter((c) => c.id !== user.id));
+      } else {
+        const data = await response.json();
+        alert(data.message || "Failed to disconnect.");
+      }
+    } catch (err) {
+      console.error("Failed to disconnect:", err);
+    }
   };
 
   return (
@@ -145,7 +190,7 @@ export function Connections({ setSelectedChatUserId }) {
                       Message
                     </button>
                     <button
-                      onClick={() => handleDisconnect(user.id)}
+                      onClick={() => handleDisconnect(user)}
                       className="p-1.5 border border-border rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 hover:border-red-400/30 transition-colors flex-shrink-0 cursor-pointer"
                     >
                       <UserMinus size={13} />

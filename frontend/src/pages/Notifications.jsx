@@ -26,30 +26,82 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
     return true;
   });
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const handleMarkAllRead = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/notifications/read-all", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      }
+    } catch (err) {
+      console.error("Failed to mark all read:", err);
+    }
   };
 
-  const handleAcceptRequest = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, read: true, status: "accepted" } : n
-      )
-    );
+  const handleAcceptRequest = async (notification) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/connections/${notification.referenceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ status: "accepted" }),
+      });
+      if (response.ok) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, read: true, status: "accepted" } : n
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to accept request:", err);
+    }
   };
 
-  const handleDeclineRequest = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, read: true, status: "declined" } : n
-      )
-    );
+  const handleDeclineRequest = async (notification) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/connections/${notification.referenceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ status: "declined" }),
+      });
+      if (response.ok) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, read: true, status: "declined" } : n
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to decline request:", err);
+    }
   };
 
-  const handleMarkOneRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const handleMarkOneRead = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (response.ok) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
   };
 
   const handleNotificationClick = (n) => {
@@ -150,7 +202,7 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAcceptRequest(n.id);
+                            handleAcceptRequest(n);
                           }}
                           className="px-3.5 py-1.5 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-colors cursor-pointer"
                         >
@@ -159,7 +211,7 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeclineRequest(n.id);
+                            handleDeclineRequest(n);
                           }}
                           className="px-3.5 py-1.5 border border-border text-xs font-semibold rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                         >

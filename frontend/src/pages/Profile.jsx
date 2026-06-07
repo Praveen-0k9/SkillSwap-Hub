@@ -1,8 +1,14 @@
-import { useState } from "react";
-import { Star, Mail, Calendar, Edit, BookOpen, Users, Award, MessageSquare, CheckCircle, X, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Star, Mail, Calendar, Edit, BookOpen, Users, Award, MessageSquare, CheckCircle, X, CheckCircle2, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { skillCategories } from "../data/mockData";
 
 const tabs = ["Skills", "Reviews", "Activity"];
+
+const getIconComponent = (iconName) => {
+  const map = { Star, Mail, Calendar, Edit, BookOpen, Users, Award, MessageSquare, CheckCircle, X, CheckCircle2, Trash2 };
+  return map[iconName] || BookOpen;
+};
 
 const initialReviews = [
   {
@@ -48,12 +54,21 @@ const initialSkills = [
 
 export function Profile({ user }) {
   const [tab, setTab] = useState("Skills");
-  const [skills, setSkills] = useState(initialSkills);
+  const [skills, setSkills] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [activities, setActivities] = useState([]);
   
   // Stateful forms for adding a skill
   const [isAdding, setIsAdding] = useState(false);
   const [newSkillName, setNewSkillName] = useState("");
-  const [newSkillCategory, setNewSkillCategory] = useState("Web Dev");
+  const [newSkillCategory, setNewSkillCategory] = useState(skillCategories[0] || "Web Development");
+
+  // Editing skill states
+  const [editingSkillId, setEditingSkillId] = useState(null);
+  const [editSkillName, setEditSkillName] = useState("");
+  const [editSkillCategory, setEditSkillCategory] = useState("");
+  const [editSkillLevel, setEditSkillLevel] = useState("Intermediate");
+  const [editSkillDescription, setEditSkillDescription] = useState("");
   
   // Feedback Toast state
   const [toast, setToast] = useState(null);
@@ -65,24 +80,161 @@ export function Profile({ user }) {
     }, 4000);
   };
 
-  const handleAddSkill = (e) => {
+  const startEditing = (skill) => {
+    setEditingSkillId(skill._id);
+    setEditSkillName(skill.name);
+    setEditSkillCategory(skill.category);
+    setEditSkillLevel(skill.level || "Intermediate");
+    setEditSkillDescription(skill.description || "");
+  };
+
+  const fetchUserSkills = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/skills?userId=${user.id || user._id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSkills(data.skills);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user skills:", err);
+    }
+  };
+
+  const fetchUserReviews = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/reviews?userId=${user.id || user._id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setReviews(data.reviews);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user reviews:", err);
+    }
+  };
+
+  const fetchUserActivities = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/activities?userId=${user.id || user._id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setActivities(data.activities);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user activities:", err);
+    }
+  };
+
+  const handleUpdateSkill = async (e, id) => {
+    e.preventDefault();
+    if (!editSkillName.trim()) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/skills/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editSkillName.trim(),
+          category: editSkillCategory,
+          level: editSkillLevel,
+          description: editSkillDescription.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setSkills(prev => prev.map(s => s._id === id ? data.skill : s));
+        showToast(`Skill "${editSkillName.trim()}" updated successfully!`);
+        setEditingSkillId(null);
+        fetchUserActivities();
+      } else {
+        showToast(data.message || "Failed to update skill");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.");
+    }
+  };
+
+  const handleDeleteSkill = async (id, name) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete the skill "${name}"?`);
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/skills/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setSkills(prev => prev.filter(s => s._id !== id));
+        showToast(`Skill "${name}" deleted successfully.`);
+        fetchUserActivities();
+      } else {
+        showToast(data.message || "Failed to delete skill");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchUserSkills();
+      fetchUserReviews();
+      fetchUserActivities();
+    }
+  }, [user]);
+
+  const handleAddSkill = async (e) => {
     e.preventDefault();
     if (!newSkillName.trim()) return;
 
-    const newSkill = {
-      name: newSkillName.trim(),
-      category: newSkillCategory,
-      rating: 5.0,
-      learners: 0
-    };
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5000/api/skills", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newSkillName.trim(),
+          category: newSkillCategory,
+          description: `Learn ${newSkillName.trim()} with me!`,
+          level: "Intermediate",
+        }),
+      });
 
-    setSkills(prev => [...prev, newSkill]);
-    showToast(`Skill "${newSkillName.trim()}" added to your profile!`);
-    
-    // Reset form
-    setNewSkillName("");
-    setNewSkillCategory("Web Dev");
-    setIsAdding(false);
+      const data = await response.json();
+      if (response.ok) {
+        setSkills(prev => [data.skill, ...prev]);
+        showToast(`Skill "${newSkillName.trim()}" added to your profile!`);
+        // Reset form
+        setNewSkillName("");
+        setNewSkillCategory(skillCategories[0] || "Web Development");
+        setIsAdding(false);
+        fetchUserActivities();
+      } else {
+        showToast(data.message || "Failed to add skill");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Network error. Please try again.");
+    }
   };
 
   if (!user) {
@@ -115,9 +267,17 @@ export function Profile({ user }) {
           {/* Avatar Photo */}
           <div className="flex-shrink-0">
             <div className="relative w-20 h-20 mx-auto sm:mx-0">
-              <div className="w-20 h-20 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center text-3xl font-bold text-primary select-none">
-                {user.name ? user.name[0] : "A"}
-              </div>
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-primary/30"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center text-3xl font-bold text-primary select-none">
+                  {user.name ? user.name[0] : "A"}
+                </div>
+              )}
               <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-card" />
             </div>
           </div>
@@ -241,13 +401,11 @@ export function Profile({ user }) {
                   <select
                     value={newSkillCategory}
                     onChange={(e) => setNewSkillCategory(e.target.value)}
-                    className="bg-slate-950/40 border border-border rounded-lg px-4 py-2.5 text-sm text-slate-300 outline-none focus:border-primary/50"
+                    className="bg-slate-900 border border-border rounded-lg px-4 py-2.5 text-sm text-slate-200 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
                   >
-                    <option value="Web Dev">Web Dev</option>
-                    <option value="Design">Design</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Data Science">Data Science</option>
-                    <option value="Mobile Dev">Mobile Dev</option>
+                    {skillCategories.map((c) => (
+                      <option key={c} value={c} className="bg-slate-900 text-slate-200">{c}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -264,28 +422,135 @@ export function Profile({ user }) {
           {/* Skills Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {skills.map((skill, i) => (
-              <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm hover:border-border/80 transition-all flex flex-col justify-between">
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 truncate">
-                      {skill.category}
-                    </span>
-                    <button className="flex-shrink-0 p-1 rounded-lg text-slate-500 hover:text-foreground hover:bg-slate-800 transition-colors cursor-pointer">
-                      <Edit size={12} />
+              editingSkillId === skill._id ? (
+                <form
+                  key={skill._id || i}
+                  onSubmit={(e) => handleUpdateSkill(e, skill._id)}
+                  className="bg-card border border-primary/30 rounded-xl p-4 shadow-sm flex flex-col gap-3 transition-all"
+                >
+                  <div className="flex justify-between items-center border-b border-border/40 pb-2">
+                    <span className="text-xs font-bold text-primary">Edit Skill</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingSkillId(null)}
+                      className="p-1 rounded-md text-slate-400 hover:text-foreground hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      <X size={12} />
                     </button>
                   </div>
-                  <h4 className="text-sm font-bold text-foreground truncate">{skill.name}</h4>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Skill Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editSkillName}
+                      onChange={(e) => setEditSkillName(e.target.value)}
+                      className="bg-slate-950/40 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</label>
+                      <select
+                        value={editSkillCategory}
+                        onChange={(e) => setEditSkillCategory(e.target.value)}
+                        className="bg-slate-900 border border-border rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
+                      >
+                        {skillCategories.map((c) => (
+                          <option key={c} value={c} className="bg-slate-900 text-slate-200">{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Level</label>
+                      <select
+                        value={editSkillLevel}
+                        onChange={(e) => setEditSkillLevel(e.target.value)}
+                        className="bg-slate-900 border border-border rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
+                      >
+                        {["Beginner", "Intermediate", "Advanced", "Expert"].map((l) => (
+                          <option key={l} value={l} className="bg-slate-900 text-slate-200">{l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Description</label>
+                    <textarea
+                      value={editSkillDescription}
+                      onChange={(e) => setEditSkillDescription(e.target.value)}
+                      rows={2}
+                      className="bg-slate-950/40 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary/50 resize-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-border/40">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSkill(skill._id, skill.name)}
+                      className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 text-xs font-semibold cursor-pointer"
+                    >
+                      <Trash2 size={12} />
+                      Delete
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSkillId(null)}
+                        className="px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <div key={skill._id || i} className="bg-card border border-border rounded-xl p-4 shadow-sm hover:border-border/80 transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex gap-1.5">
+                        <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 truncate">
+                          {skill.category}
+                        </span>
+                        <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-border truncate">
+                          {skill.level || "Intermediate"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => startEditing(skill)}
+                        className="flex-shrink-0 p-1 rounded-lg text-slate-500 hover:text-foreground hover:bg-slate-800 transition-colors cursor-pointer"
+                      >
+                        <Edit size={12} />
+                      </button>
+                    </div>
+                    <h4 className="text-sm font-bold text-foreground truncate">{skill.name}</h4>
+                    {skill.description && (
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        {skill.description}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-3 pt-2 border-t border-border/40">
+                    <span className="flex items-center gap-1 font-semibold text-slate-300">
+                      <Star size={11} className="text-yellow-400 fill-yellow-400" />
+                      {skill.rating || "5.0"}
+                    </span>
+                    <span>·</span>
+                    <span>{skill.learners || 0} learners</span>
+                  </div>
                 </div>
-                
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-3 pt-2 border-t border-border/40">
-                  <span className="flex items-center gap-1 font-semibold text-slate-300">
-                    <Star size={11} className="text-yellow-400 fill-yellow-400" />
-                    {skill.rating}
-                  </span>
-                  <span>·</span>
-                  <span>{skill.learners} learners</span>
-                </div>
-              </div>
+              )
             ))}
           </div>
         </div>
@@ -293,49 +558,74 @@ export function Profile({ user }) {
 
       {tab === "Reviews" && (
         <div className="space-y-3">
-          {initialReviews.map((r, i) => (
-            <div key={i} className="bg-card border border-border rounded-xl p-5 shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="w-9 h-9 rounded-full bg-slate-800 border border-border flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 select-none uppercase">
-                  {r.initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
-                    <div>
-                      <span className="text-sm font-semibold text-foreground">{r.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2 font-medium bg-slate-950/40 px-2 py-0.5 rounded border border-border/40">{r.skill}</span>
-                    </div>
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {Array.from({ length: r.rating }).map((_, j) => (
-                        <Star key={j} size={11} className="text-yellow-400 fill-yellow-400" />
-                      ))}
+          {reviews.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
+              No reviews yet.
+            </div>
+          ) : (
+            reviews.map((r, i) => {
+              const initials = r.reviewerName ? r.reviewerName.split(" ").map(n => n[0]).join("") : "U";
+              const formattedDate = r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "just now";
+              return (
+                <div key={r._id || i} className="bg-card border border-border rounded-xl p-5 shadow-sm">
+                  <div className="flex items-start gap-4">
+                    {r.reviewerAvatar ? (
+                      <img
+                        src={r.reviewerAvatar}
+                        alt={r.reviewerName}
+                        className="w-9 h-9 rounded-full object-cover border border-border flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-slate-800 border border-border flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 select-none uppercase">
+                        {initials}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                        <div>
+                          <span className="text-sm font-semibold text-foreground">{r.reviewerName}</span>
+                          <span className="text-xs text-muted-foreground ml-2 font-medium bg-slate-950/40 px-2 py-0.5 rounded border border-border/40">{r.skillName}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          {Array.from({ length: r.rating }).map((_, j) => (
+                            <Star key={j} size={11} className="text-yellow-400 fill-yellow-400" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-slate-400 leading-relaxed">{r.comment}</p>
+                      <p className="text-[10px] text-muted-foreground mt-2 font-medium">{formattedDate}</p>
                     </div>
                   </div>
-                  <p className="text-sm text-slate-400 leading-relaxed">{r.comment}</p>
-                  <p className="text-[10px] text-muted-foreground mt-2 font-medium">{r.date}</p>
                 </div>
-              </div>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
       )}
 
       {tab === "Activity" && (
         <div className="space-y-3">
-          {initialActivityLog.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <div key={i} className="bg-card border border-border rounded-xl px-5 py-4 flex items-center gap-4 shadow-sm hover:border-border/80 transition-all">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.color}`}>
-                  <Icon size={15} />
+          {activities.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
+              No recent activity.
+            </div>
+          ) : (
+            activities.map((item, i) => {
+              const Icon = getIconComponent(item.icon);
+              const formattedTime = item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "just now";
+              return (
+                <div key={item._id || i} className="bg-card border border-border rounded-xl px-5 py-4 flex items-center gap-4 shadow-sm hover:border-border/80 transition-all">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.color || "text-primary bg-primary/10"}`}>
+                    <Icon size={15} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground truncate">{item.text}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">{formattedTime}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{item.text}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">{item.time}</p>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       )}
     </div>

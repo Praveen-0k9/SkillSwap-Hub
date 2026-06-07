@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Compass, MessageSquare, Bell, Bookmark,
-  Users, BarChart2, Settings, Shield, X, Zap,
+  Users, BarChart2, Settings, Shield, X, Zap, LogOut
 } from "lucide-react";
 
 const navItems = [
@@ -41,7 +41,7 @@ function NavItem({ icon: Icon, label, path, badge, isActive, onClick }) {
   );
 }
 
-export function Sidebar({ isOpen, onClose, unreadNotifications = 0, unreadMessages = 0 }) {
+export function Sidebar({ isOpen, onClose, unreadNotifications = 0, unreadMessages = 0, user, onLogout }) {
   const location = useLocation();
 
   return (
@@ -107,19 +107,40 @@ export function Sidebar({ isOpen, onClose, unreadNotifications = 0, unreadMessag
           ))}
 
           {/* User row */}
-          <Link
-            to="/profile"
-            onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2 mt-2 rounded-md hover:bg-muted transition-colors min-w-0"
-          >
-            <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0 select-none">
-              A
+          {user && (
+            <div className="flex items-center justify-between gap-2 mt-2 p-1.5 rounded-md hover:bg-muted/40 transition-colors">
+              <Link
+                to="/profile"
+                onClick={onClose}
+                className="flex items-center gap-2.5 min-w-0 flex-1"
+              >
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-7 h-7 rounded-full object-cover border border-primary/30 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0 select-none uppercase">
+                    {user.name ? user.name[0] : "U"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    @{user.email ? user.email.split("@")[0] : "user"}
+                  </p>
+                </div>
+              </Link>
+              <button
+                onClick={onLogout}
+                title="Log Out"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/20 transition-all cursor-pointer flex-shrink-0"
+              >
+                <LogOut size={13} />
+              </button>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">Alex Morgan</p>
-              <p className="text-xs text-muted-foreground truncate">@alexmorgan</p>
-            </div>
-          </Link>
+          )}
         </div>
       </aside>
     </>
