@@ -1,12 +1,63 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { GlassCard } from "../../components/GlassCard";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Checkbox } from "../../components/ui/checkbox";
-import { User, Mail, Lock, Sparkles } from "lucide-react";
+import { User, Mail, Lock, Sparkles, AlertCircle } from "lucide-react";
 
 export function Register() {
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!termsAccepted) {
+      setError("You must agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("token", data.token);
+        // Force reload page to trigger auth state check in App.jsx
+        window.location.href = "/dashboard";
+      } else {
+        setError(data.message || "Registration failed. Please try again.");
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setError("Network connection error. Is the backend running?");
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-secondary/5">
       <div className="absolute inset-0 overflow-hidden">
@@ -26,7 +77,14 @@ export function Register() {
         </div>
 
         <GlassCard className="p-8">
-          <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+          {error && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg text-xs font-semibold bg-red-500/10 border border-red-500/20 text-red-400 mb-5">
+              <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+              <span className="leading-normal">{error}</span>
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
@@ -34,7 +92,11 @@ export function Register() {
                 <Input
                   id="name"
                   type="text"
+                  required
                   placeholder="Alex Johnson"
+                  value={name}
+                  disabled={isSubmitting}
+                  onChange={(e) => setName(e.target.value)}
                   className="pl-10 bg-input-background border-border"
                 />
               </div>
@@ -47,7 +109,11 @@ export function Register() {
                 <Input
                   id="email"
                   type="email"
+                  required
                   placeholder="alex@email.com"
+                  value={email}
+                  disabled={isSubmitting}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-input-background border-border"
                 />
               </div>
@@ -60,7 +126,11 @@ export function Register() {
                 <Input
                   id="password"
                   type="password"
+                  required
                   placeholder="••••••••"
+                  value={password}
+                  disabled={isSubmitting}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 bg-input-background border-border"
                 />
               </div>
@@ -73,22 +143,35 @@ export function Register() {
                 <Input
                   id="confirm-password"
                   type="password"
+                  required
                   placeholder="••••••••"
+                  value={confirmPassword}
+                  disabled={isSubmitting}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10 bg-input-background border-border"
                 />
               </div>
             </div>
 
             <div className="flex items-start space-x-2">
-              <Checkbox id="terms" className="mt-1" />
-              <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer select-none">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={(val) => setTermsAccepted(!!val)}
+                className="mt-1"
+              />
+              <label htmlFor="terms" className="text-sm text-slate-400 cursor-pointer select-none">
                 I agree to the Terms of Service and Privacy Policy
               </label>
             </div>
 
-            <Button asChild className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity">
-              <Link to="/login">Create Account</Link>
-            </Button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold py-2.5 rounded-lg hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Creating Account..." : "Create Account"}
+            </button>
 
             <div className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
