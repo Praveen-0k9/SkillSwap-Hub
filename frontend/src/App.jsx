@@ -342,14 +342,18 @@ export default function App() {
           path="/admin"
           element={
             user ? (
-              <AppLayout
-                unreadNotifications={unreadNotifications}
-                unreadMessages={unreadMessages}
-                user={user}
-                onLogout={handleLogout}
-              >
-                <Admin />
-              </AppLayout>
+              user.role === "admin" ? (
+                <AppLayout
+                  unreadNotifications={unreadNotifications}
+                  unreadMessages={unreadMessages}
+                  user={user}
+                  onLogout={handleLogout}
+                >
+                  <Admin />
+                </AppLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
             ) : (
               <Navigate to="/login" replace />
             )
