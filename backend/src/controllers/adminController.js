@@ -69,9 +69,9 @@ export const toggleUserBan = async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Protect safety mechanism: Cannot ban oneself
-    if (user._id.toString() === req.user._id.toString()) {
-      return res.status(400).json({ message: "Admin cannot suspend their own account." });
+    // Protect safety mechanism: Cannot suspend admin accounts
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Admin accounts cannot be suspended." });
     }
 
     user.status = user.status === "banned" ? "offline" : "banned";

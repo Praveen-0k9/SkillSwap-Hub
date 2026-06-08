@@ -370,15 +370,17 @@ export function Admin() {
                       <span className="text-sm text-foreground font-semibold">{user.rating}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveUserMenuId(activeUserMenuId === user.id ? null : user.id);
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-foreground transition-all cursor-pointer"
-                      >
-                        <MoreVertical size={14} />
-                      </button>
+                      {user.role !== "admin" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveUserMenuId(activeUserMenuId === user.id ? null : user.id);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-foreground transition-all cursor-pointer"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                      )}
 
                       {/* Dropdown Action Overlay Menu */}
                       {activeUserMenuId === user.id && (
