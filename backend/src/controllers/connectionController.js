@@ -142,12 +142,21 @@ export const getConnections = async (req, res) => {
       _id: { $in: connectedUserIds },
     }).select("-password");
 
-    // Format connections matching frontend model
-    const connections = connectionsList.map((u) => {
+    // Format connections matching frontend model and deduplicate by name
+    const connections = [];
+    const seenNames = new Set();
+    
+    for (const u of connectionsList) {
+      if (seenNames.has(u.name)) {
+        continue;
+      }
+      seenNames.add(u.name);
+      
       const conn = activeConnections.find(
         (c) => c.senderId.toString() === u._id.toString() || c.receiverId.toString() === u._id.toString()
       );
-      return {
+      
+      connections.push({
         id: u._id,
         connectionId: conn ? conn._id : null,
         name: u.name,
@@ -159,8 +168,8 @@ export const getConnections = async (req, res) => {
         online: true, // Mock online state
         verified: u.verified || false,
         connectedAt: conn ? conn.createdAt : null,
-      };
-    });
+      });
+    }
 
     // Find all users connected to current user (pending or accepted) to exclude from suggestions
     const allConnections = await Connection.find({
@@ -173,21 +182,38 @@ export const getConnections = async (req, res) => {
     );
     excludedUserIds.push(req.user._id); // Exclude self
 
-    // Generate suggestions
+    // Generate suggestions (query all possible, filter by name/connection state, then limit to 6)
     const suggestionsList = await User.find({
       _id: { $nin: excludedUserIds },
-    })
-      .limit(6)
-      .select("-password");
+    }).select("-password");
 
-    const suggestions = suggestionsList.map((u, i) => ({
-      id: u._id,
-      name: u.name,
-      initials: u.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase(),
-      bio: u.bio,
-      skills: u.skills || [],
-      mutual: Math.floor(Math.random() * 8) + 1, // Mock mutual count
-    }));
+    const suggestions = [];
+    const seenSuggestionNames = new Set();
+    
+    // Do not suggest someone who is already a connection
+    for (const name of seenNames) {
+      seenSuggestionNames.add(name);
+    }
+
+    for (const u of suggestionsList) {
+      if (seenSuggestionNames.has(u.name)) {
+        continue;
+      }
+      seenSuggestionNames.add(u.name);
+      
+      suggestions.push({
+        id: u._id,
+        name: u.name,
+        initials: u.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase(),
+        bio: u.bio,
+        skills: u.skills || [],
+        mutual: Math.floor(Math.random() * 8) + 1, // Mock mutual count
+      });
+      
+      if (suggestions.length >= 6) {
+        break;
+      }
+    }
 
     res.json({ connections, suggestions });
   } catch (error) {

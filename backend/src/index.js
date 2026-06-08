@@ -46,18 +46,6 @@ app.get("/", (req, res) => {
   res.send("SkillSwap Hub API is running...");
 });
 
-app.get("/api/inspect-db-temp", async (req, res) => {
-  try {
-    const User = (await import("./models/User.js")).default;
-    const Connection = (await import("./models/Connection.js")).default;
-    const users = await User.find({});
-    const connections = await Connection.find({});
-    res.json({ users, connections });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Port configuration
 const PORT = process.env.PORT || 5000;
 
