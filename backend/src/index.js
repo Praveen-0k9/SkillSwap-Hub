@@ -13,6 +13,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +39,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Base route
 app.get("/", (req, res) => {

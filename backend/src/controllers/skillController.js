@@ -6,7 +6,7 @@ import Skill from "../models/Skill.js";
 export const getSkills = async (req, res) => {
   try {
     const { userId, search, category, level } = req.query;
-    let query = {};
+    let query = { deactivated: { $ne: true } };
 
     if (userId) {
       query.userId = userId;

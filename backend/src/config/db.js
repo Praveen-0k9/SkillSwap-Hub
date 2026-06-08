@@ -3,6 +3,7 @@ import Skill from "../models/Skill.js";
 import User from "../models/User.js";
 import Review from "../models/Review.js";
 import Activity from "../models/Activity.js";
+import Report from "../models/Report.js";
 
 const seedSkills = async () => {
   try {
@@ -292,12 +293,39 @@ const seedReviewsAndActivities = async () => {
   }
 };
 
+const seedReports = async () => {
+  try {
+    const count = await Report.countDocuments();
+    if (count === 0) {
+      console.log("🌱 Report collection is empty. Seeding mock reports...");
+      const mockReports = [
+        { type: "Inappropriate Content", reporter: "Sarah Chen", reported: "John Doe", reason: "Spam messages in chat", status: "pending" },
+        { type: "Fake Skill", reporter: "Marcus Thompson", reported: "Jane Smith", reason: "Skill description does not match content", status: "pending" },
+        { type: "Harassment", reporter: "Emily Rodriguez", reported: "Bob Wilson", reason: "Rude behavior during collaboration", status: "pending" },
+      ];
+      await Report.insertMany(mockReports);
+      console.log("🌱 Mock reports seeded successfully!");
+    }
+  } catch (error) {
+    console.error("❌ Failed to seed reports database:", error.message);
+  }
+};
+
 export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    // Auto-update user's account to admin
+    await User.updateOne(
+      { email: "praveenkumar37025@gmail.com" },
+      { $set: { role: "admin" } }
+    );
+    console.log("👮 Ensured user praveenkumar37025@gmail.com is designated as Admin");
+
     await seedSkills();
     await seedReviewsAndActivities();
+    await seedReports();
   } catch (error) {
     console.error(`Database Connection Error: ${error.message}`);
     process.exit(1);

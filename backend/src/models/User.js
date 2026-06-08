@@ -79,6 +79,16 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  role: {
+    type: String,
+    enum: ["user", "admin"],
+    default: "user",
+  },
+  status: {
+    type: String,
+    enum: ["online", "offline", "banned"],
+    default: "offline",
+  },
 });
 
 // Hash password before saving

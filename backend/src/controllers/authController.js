@@ -24,6 +24,7 @@ const formatUserResponse = (user) => {
     rating: user.rating,
     reviewCount: user.reviewCount,
     twoFactorEnabled: user.twoFactorEnabled || false,
+    role: user.role || "user",
     notifications: user.notifications || {
       collabRequests: true,
       newMessages: true,
@@ -88,6 +89,9 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (user && (await user.comparePassword(password))) {
+      if (user.status === "banned") {
+        return res.status(403).json({ message: "Your account has been suspended by an administrator." });
+      }
       // If 2FA is enabled, intercept login, generate OTP and request verification
       if (user.twoFactorEnabled) {
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
