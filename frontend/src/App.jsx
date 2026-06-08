@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -66,7 +67,7 @@ export default function App() {
       return;
     }
 
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io(API_BASE_URL, {
       auth: { token },
     });
 
@@ -88,7 +89,7 @@ export default function App() {
   useEffect(() => {
     const fetchGlobalSkills = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/skills");
+        const response = await fetch(`${API_BASE_URL}/api/skills`);
         const data = await response.json();
         if (response.ok && data.skills && data.skills.length > 0) {
           setSkills(data.skills);
@@ -110,7 +111,7 @@ export default function App() {
       }
 
       try {
-        const response = await fetch("http://localhost:5000/api/auth/me", {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -139,7 +140,7 @@ export default function App() {
     const fetchNotifications = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:5000/api/notifications", {
+        const response = await fetch(`${API_BASE_URL}/api/notifications`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect, useRef } from "react";
 import { Search, Send, Paperclip, Phone, Video, MoreVertical } from "lucide-react";
 import { io } from "socket.io-client";
@@ -18,7 +19,7 @@ export function Chat({ user, socket, notifications = [], setNotifications, selec
   const markChatNotificationsAsRead = async (senderId) => {
     if (!senderId) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/read-chat/${senderId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/read-chat/${senderId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -41,7 +42,7 @@ export function Chat({ user, socket, notifications = [], setNotifications, selec
   // Fetch all chat rooms
   const fetchRooms = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/chat/rooms", {
+      const response = await fetch(`${API_BASE_URL}/api/chat/rooms`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -58,7 +59,7 @@ export function Chat({ user, socket, notifications = [], setNotifications, selec
   // Fetch all connections
   const fetchConnections = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/connections", {
+      const response = await fetch(`${API_BASE_URL}/api/connections`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -75,7 +76,7 @@ export function Chat({ user, socket, notifications = [], setNotifications, selec
   // Fetch messages for active chat
   const fetchMessages = async (chatId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/chat/room/${chatId}/messages`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/room/${chatId}/messages`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -123,7 +124,7 @@ export function Chat({ user, socket, notifications = [], setNotifications, selec
       // Create a room if not exists
       const startChat = async () => {
         try {
-          const response = await fetch("http://localhost:5000/api/chat/room", {
+          const response = await fetch(`${API_BASE_URL}/api/chat/room`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -250,7 +251,7 @@ export function Chat({ user, socket, notifications = [], setNotifications, selec
       fetchMessages(item.chatId);
     } else {
       try {
-        const response = await fetch("http://localhost:5000/api/chat/room", {
+        const response = await fetch(`${API_BASE_URL}/api/chat/room`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

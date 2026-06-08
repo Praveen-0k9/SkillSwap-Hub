@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { Search, MessageSquare, UserPlus, UserMinus, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +14,7 @@ export function Connections({ setSelectedChatUserId }) {
 
   const fetchConnections = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/connections", {
+      const response = await fetch(`${API_BASE_URL}/api/connections`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -49,7 +50,7 @@ export function Connections({ setSelectedChatUserId }) {
   const handleConnect = async (user) => {
     try {
       console.log("Sending connection request to", user);
-      const response = await fetch("http://localhost:5000/api/connections/request", {
+      const response = await fetch(`${API_BASE_URL}/api/connections/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,7 +79,7 @@ export function Connections({ setSelectedChatUserId }) {
 
   const handleDisconnect = async (user) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/${user.connectionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/connections/${user.connectionId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,

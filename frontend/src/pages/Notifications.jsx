@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, MessageSquare, Star, CheckCheck, UserPlus, Check, X } from "lucide-react";
@@ -28,7 +29,7 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
 
   const handleMarkAllRead = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/notifications/read-all", {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -44,7 +45,7 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
 
   const handleAcceptRequest = async (notification) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/${notification.referenceId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/connections/${notification.referenceId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -66,7 +67,7 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
 
   const handleDeclineRequest = async (notification) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/${notification.referenceId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/connections/${notification.referenceId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -88,7 +89,7 @@ export function Notifications({ notifications, setNotifications, setSelectedChat
 
   const handleMarkOneRead = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,

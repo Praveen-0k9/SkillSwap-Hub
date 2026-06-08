@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { BookOpen, Users, Star, TrendingUp, Clock, MessageSquare, ArrowRight, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -18,27 +19,27 @@ export function Dashboard({ user }) {
         const token = localStorage.getItem("token");
 
         // 1. Fetch user's skills
-        const skillsRes = await fetch(`http://localhost:5000/api/skills?userId=${user.id || user._id}`, {
+        const skillsRes = await fetch(`${API_BASE_URL}/api/skills?userId=${user.id || user._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const skillsData = await skillsRes.json();
         
         // 2. Fetch connections
-        const connRes = await fetch("http://localhost:5000/api/connections", {
+        const connRes = await fetch(`${API_BASE_URL}/api/connections`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const connData = await connRes.json();
 
         // 3. Fetch activities
-        const actRes = await fetch(`http://localhost:5000/api/activities?userId=${user.id || user._id}`);
+        const actRes = await fetch(`${API_BASE_URL}/api/activities?userId=${user.id || user._id}`);
         const actData = await actRes.json();
 
         // 4. Fetch global trending skills
-        const globalRes = await fetch("http://localhost:5000/api/skills");
+        const globalRes = await fetch(`${API_BASE_URL}/api/skills`);
         const globalData = await globalRes.json();
 
         // 5. Fetch active chat rooms
-        const chatRoomsRes = await fetch("http://localhost:5000/api/chat/rooms", {
+        const chatRoomsRes = await fetch(`${API_BASE_URL}/api/chat/rooms`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const chatRoomsData = await chatRoomsRes.json();

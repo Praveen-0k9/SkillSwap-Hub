@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { Eye, Users, Star, MessageSquare, TrendingUp, TrendingDown, Calendar } from "lucide-react";
 
@@ -11,7 +12,7 @@ export function Analytics({ user }) {
       if (!user) return;
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/analytics/overview", {
+        const res = await fetch(`${API_BASE_URL}/api/analytics/overview`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

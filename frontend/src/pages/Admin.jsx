@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useRef, useEffect } from "react";
 import { Users, BookOpen, AlertTriangle, Ban, TrendingUp, MoreVertical, Check, X, ShieldAlert, ShieldCheck } from "lucide-react";
 
@@ -47,26 +48,26 @@ export function Admin() {
       };
 
       // Fetch stats
-      const statsRes = await fetch("http://localhost:5000/api/admin/stats", { headers });
+      const statsRes = await fetch(`${API_BASE_URL}/api/admin/stats`, { headers });
       const statsData = await statsRes.json();
       if (statsRes.ok) setStats(statsData);
 
       // Fetch users
-      const usersRes = await fetch("http://localhost:5000/api/admin/users", { headers });
+      const usersRes = await fetch(`${API_BASE_URL}/api/admin/users`, { headers });
       const usersData = await usersRes.json();
       if (usersRes.ok) {
         setUsers(usersData.map(u => ({ ...u, id: u._id, status: u.status || "offline" })));
       }
 
       // Fetch skills
-      const skillsRes = await fetch("http://localhost:5000/api/admin/skills", { headers });
+      const skillsRes = await fetch(`${API_BASE_URL}/api/admin/skills`, { headers });
       const skillsData = await skillsRes.json();
       if (skillsRes.ok) {
         setSkills(skillsData.map(s => ({ ...s, id: s._id })));
       }
 
       // Fetch reports
-      const reportsRes = await fetch("http://localhost:5000/api/admin/reports", { headers });
+      const reportsRes = await fetch(`${API_BASE_URL}/api/admin/reports`, { headers });
       const reportsData = await reportsRes.json();
       if (reportsRes.ok) {
         setReports(reportsData.map(r => ({ ...r, id: r._id })));
@@ -94,7 +95,7 @@ export function Admin() {
   const handleResolveReport = async (id, reporter, reported) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/reports/${id}/resolve`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/reports/${id}/resolve`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -115,7 +116,7 @@ export function Admin() {
   const handleDismissReport = async (id, reported) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/reports/${id}/dismiss`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/reports/${id}/dismiss`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -136,7 +137,7 @@ export function Admin() {
   const handleToggleUserBan = async (userId, name) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/ban`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/ban`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -167,7 +168,7 @@ export function Admin() {
   const handleToggleUserVerify = async (userId, name, isCurrentlyVerified) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/verify`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/verify`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +195,7 @@ export function Admin() {
   const handleToggleSkillStatus = async (skillId, name, isDeactivated) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/admin/skills/${skillId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/skills/${skillId}/status`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

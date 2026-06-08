@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { Star, Mail, Calendar, Edit, BookOpen, Users, Award, MessageSquare, CheckCircle, X, CheckCircle2, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -91,7 +92,7 @@ export function Profile({ user }) {
   const fetchUserSkills = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/skills?userId=${user.id || user._id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/skills?userId=${user.id || user._id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -107,7 +108,7 @@ export function Profile({ user }) {
 
   const fetchUserReviews = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/reviews?userId=${user.id || user._id}`);
+      const response = await fetch(`${API_BASE_URL}/api/reviews?userId=${user.id || user._id}`);
       const data = await response.json();
       if (response.ok) {
         setReviews(data.reviews);
@@ -119,7 +120,7 @@ export function Profile({ user }) {
 
   const fetchUserActivities = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/activities?userId=${user.id || user._id}`);
+      const response = await fetch(`${API_BASE_URL}/api/activities?userId=${user.id || user._id}`);
       const data = await response.json();
       if (response.ok) {
         setActivities(data.activities);
@@ -135,7 +136,7 @@ export function Profile({ user }) {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/skills/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/skills/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -170,7 +171,7 @@ export function Profile({ user }) {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/skills/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/skills/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -205,7 +206,7 @@ export function Profile({ user }) {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/skills", {
+      const response = await fetch(`${API_BASE_URL}/api/skills`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

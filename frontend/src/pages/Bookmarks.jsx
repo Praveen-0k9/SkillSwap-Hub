@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { Star, Trash2, BookmarkCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -14,7 +15,7 @@ export function Bookmarks({ skills, setSkills }) {
   const handleRemoveBookmark = async (skillId) => {
     if (!skillId) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/skills/${skillId}/bookmark`, {
+      const response = await fetch(`${API_BASE_URL}/api/skills/${skillId}/bookmark`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,

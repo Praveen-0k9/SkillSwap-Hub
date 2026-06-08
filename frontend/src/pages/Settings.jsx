@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect, useRef } from "react";
 import { User, Lock, Bell, Shield, Camera, CheckCircle2, AlertCircle, X } from "lucide-react";
 
@@ -158,7 +159,7 @@ export function Settings({ user, setUser }) {
     setIsSavingProfile(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/auth/profile", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -214,7 +215,7 @@ export function Settings({ user, setUser }) {
     setIsSavingSecurity(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/auth/settings/security", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/settings/security`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -252,7 +253,7 @@ export function Settings({ user, setUser }) {
     setIsSavingNotifications(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/auth/settings/notifications", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/settings/notifications`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -285,7 +286,7 @@ export function Settings({ user, setUser }) {
     setIsSavingPrivacy(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/auth/settings/privacy", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/settings/privacy`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -317,7 +318,7 @@ export function Settings({ user, setUser }) {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/auth/profile", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

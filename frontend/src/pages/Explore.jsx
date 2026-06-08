@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { Search, Star, Bookmark, BookmarkCheck, Filter } from "lucide-react";
 import { skillCategories } from "../data/mockData";
@@ -23,7 +24,7 @@ export function Explore({ skills, setSkills }) {
       if (query) params.append("search", query);
       if (category && category !== "all") params.append("category", category);
       
-      const response = await fetch(`http://localhost:5000/api/skills?${params.toString()}`);
+      const response = await fetch(`${API_BASE_URL}/api/skills?${params.toString()}`);
       const data = await response.json();
       if (response.ok && data.skills) {
         setSearchSkills(data.skills);
@@ -47,7 +48,7 @@ export function Explore({ skills, setSkills }) {
   // Toggle bookmark on backend and update states
   const toggleBookmark = async (skillId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/skills/${skillId}/bookmark`, {
+      const response = await fetch(`${API_BASE_URL}/api/skills/${skillId}/bookmark`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
