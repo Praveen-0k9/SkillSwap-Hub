@@ -72,7 +72,8 @@ export const getConnections = async (req, res) => {
       $or: [{ senderId: req.user._id }, { receiverId: req.user._id }],
     });
 
-    if (connectionCount === 0) {
+    const emailsToSeed = ["praveenkumar37025@gmail.com", "test@email.com"];
+    if (connectionCount === 0 && emailsToSeed.includes(req.user.email.toLowerCase())) {
       console.log(`🌱 Lazily seeding mock connections for user: ${req.user.name}`);
       
       const sarah = await User.findOne({ email: "sarah.chen@email.com" });
@@ -186,6 +187,15 @@ export const getConnections = async (req, res) => {
     const suggestionsList = await User.find({
       _id: { $nin: excludedUserIds },
     }).select("-password");
+
+    // Sort suggestionsList so that real users (e.g. gmail.com) come first before mock users (email.com, example.com)
+    suggestionsList.sort((a, b) => {
+      const isAMock = a.email.endsWith("@email.com") || a.email.endsWith("@example.com");
+      const isBMock = b.email.endsWith("@email.com") || b.email.endsWith("@example.com");
+      if (isAMock && !isBMock) return 1;
+      if (!isAMock && isBMock) return -1;
+      return 0;
+    });
 
     const suggestions = [];
     const seenSuggestionNames = new Set();
