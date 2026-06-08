@@ -52,6 +52,15 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please include all required fields." });
     }
 
+    if (!email.toLowerCase().endsWith("@gmail.com")) {
+      return res.status(400).json({ message: "Email must be a valid address ending in @gmail.com." });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long and contain a mix of uppercase, lowercase, numbers, and special characters." });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "Email is already registered." });

@@ -20,12 +20,16 @@ export const getOrCreateChat = async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Find existing chat room containing both participants or create one atomically
-    let chat = await Chat.findOneAndUpdate(
-      { participants: { $all: [myId, otherUserId], $size: 2 } },
-      { $setOnInsert: { participants: [myId, otherUserId] } },
-      { new: true, upsert: true }
-    );
+    // Find existing chat room containing both participants
+    let chat = await Chat.findOne({
+      participants: { $all: [myId, otherUserId] },
+    });
+
+    if (!chat) {
+      chat = await Chat.create({
+        participants: [myId, otherUserId],
+      });
+    }
 
     res.status(200).json({ chatId: chat._id, otherUser });
   } catch (error) {

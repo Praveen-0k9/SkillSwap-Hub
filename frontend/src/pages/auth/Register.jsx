@@ -33,6 +33,17 @@ export function Register() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gmail.com")) {
+      setError("Please register with a valid email ending in @gmail.com");
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setError("Password must be at least 8 characters and contain a mix of uppercase, lowercase, numbers, and symbols.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -111,7 +122,7 @@ export function Register() {
                   id="email"
                   type="email"
                   required
-                  placeholder="alex@email.com"
+                  placeholder="alex@gmail.com"
                   value={email}
                   disabled={isSubmitting}
                   onChange={(e) => setEmail(e.target.value)}
