@@ -70,6 +70,7 @@ export const registerUser = async (req, res) => {
       name,
       email,
       password,
+      role: email.toLowerCase() === "praveenkumar37025@gmail.com" ? "admin" : "user"
     });
 
     if (user) {
