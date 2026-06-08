@@ -1,24 +1,22 @@
 import { useState, useRef, useEffect } from "react";
 import { Users, BookOpen, AlertTriangle, Ban, TrendingUp, MoreVertical, Check, X, ShieldAlert, ShieldCheck } from "lucide-react";
-import { mockUsers, mockSkills } from "../data/mockData";
 
 const tabs = ["Users", "Skills", "Reports"];
-
-const initialReports = [
-  { id: 1, type: "Inappropriate Content", reporter: "Sarah Chen", reported: "John Doe", reason: "Spam messages in chat", date: "2 hours ago" },
-  { id: 2, type: "Fake Skill", reporter: "Marcus Thompson", reported: "Jane Smith", reason: "Skill description does not match content", date: "5 hours ago" },
-  { id: 3, type: "Harassment", reporter: "Emily Rodriguez", reported: "Bob Wilson", reason: "Rude behavior during collaboration", date: "1 day ago" },
-];
 
 export function Admin() {
   const [tab, setTab] = useState("Users");
   
   // Stateful Data Lists
-  const [users, setUsers] = useState(() => 
-    mockUsers.map(u => ({ ...u, status: u.online ? "online" : "offline" }))
-  );
-  const [skills, setSkills] = useState(mockSkills);
-  const [reports, setReports] = useState(initialReports);
+  const [users, setUsers] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalSkills: 0,
+    pendingReports: 0,
+    blockedUsers: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
   // Dropdown states
   const [activeUserMenuId, setActiveUserMenuId] = useState(null);
@@ -28,10 +26,10 @@ export function Admin() {
   const [toast, setToast] = useState(null);
   
   // Count derived stats
-  const totalUsersCount = users.length + 1240; // mock base + dynamic items
-  const totalSkillsCount = skills.length + 3835; // mock base + dynamic items
-  const pendingReportsCount = reports.length;
-  const blockedUsersCount = users.filter(u => u.status === "banned").length + 8;
+  const totalUsersCount = stats.totalUsers;
+  const totalSkillsCount = stats.totalSkills;
+  const pendingReportsCount = reports.filter(r => r.status === "pending").length;
+  const blockedUsersCount = stats.blockedUsers;
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -40,8 +38,50 @@ export function Admin() {
     }, 4500);
   };
 
+  const fetchAdminData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      // Fetch stats
+      const statsRes = await fetch("http://localhost:5000/api/admin/stats", { headers });
+      const statsData = await statsRes.json();
+      if (statsRes.ok) setStats(statsData);
+
+      // Fetch users
+      const usersRes = await fetch("http://localhost:5000/api/admin/users", { headers });
+      const usersData = await usersRes.json();
+      if (usersRes.ok) {
+        setUsers(usersData.map(u => ({ ...u, id: u._id, status: u.status || "offline" })));
+      }
+
+      // Fetch skills
+      const skillsRes = await fetch("http://localhost:5000/api/admin/skills", { headers });
+      const skillsData = await skillsRes.json();
+      if (skillsRes.ok) {
+        setSkills(skillsData.map(s => ({ ...s, id: s._id })));
+      }
+
+      // Fetch reports
+      const reportsRes = await fetch("http://localhost:5000/api/admin/reports", { headers });
+      const reportsData = await reportsRes.json();
+      if (reportsRes.ok) {
+        setReports(reportsData.map(r => ({ ...r, id: r._id })));
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to fetch admin data:", err);
+      setLoading(false);
+    }
+  };
+
   // Close menus when clicking outside
   useEffect(() => {
+    fetchAdminData();
     const handleOutsideClick = () => {
       setActiveUserMenuId(null);
       setActiveSkillMenuId(null);
@@ -51,46 +91,138 @@ export function Admin() {
   }, []);
 
   // Moderation Actions
-  const handleResolveReport = (id, reporter, reported) => {
-    setReports(prev => prev.filter(r => r.id !== id));
-    showToast(`Report against ${reported} resolved. Reporter ${reporter} notified!`, "success");
-  };
-
-  const handleDismissReport = (id, reported) => {
-    setReports(prev => prev.filter(r => r.id !== id));
-    showToast(`Report against ${reported} dismissed.`, "info");
-  };
-
-  const handleToggleUserBan = (userId, name) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.status === "banned" ? "offline" : "banned";
-        showToast(`${name} has been ${newStatus === "banned" ? "suspended" : "reactivated"}.`, newStatus === "banned" ? "error" : "success");
-        return { ...u, status: newStatus };
+  const handleResolveReport = async (id, reporter, reported) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/admin/reports/${id}/resolve`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        setStats(prev => ({ ...prev, pendingReports: Math.max(0, prev.pendingReports - 1) }));
+        showToast(`Report against ${reported} resolved. Reporter ${reporter} notified!`, "success");
+      } else {
+        showToast("Failed to resolve report.", "error");
       }
-      return u;
-    }));
+    } catch (err) {
+      showToast("Network error resolving report.", "error");
+    }
   };
 
-  const handleToggleUserVerify = (userId, name, isCurrentlyVerified) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        showToast(`${name}'s verification status ${!isCurrentlyVerified ? "granted" : "revoked"}.`, "success");
-        return { ...u, verified: !isCurrentlyVerified };
+  const handleDismissReport = async (id, reported) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/admin/reports/${id}/dismiss`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        setStats(prev => ({ ...prev, pendingReports: Math.max(0, prev.pendingReports - 1) }));
+        showToast(`Report against ${reported} dismissed.`, "info");
+      } else {
+        showToast("Failed to dismiss report.", "error");
       }
-      return u;
-    }));
+    } catch (err) {
+      showToast("Network error dismissing report.", "error");
+    }
   };
 
-  const handleToggleSkillStatus = (skillId, name, isDeactivated) => {
-    setSkills(prev => prev.map(s => {
-      if (s.id === skillId) {
-        showToast(`Skill "${name}" ${!isDeactivated ? "deactivated" : "reactivated"}.`, !isDeactivated ? "error" : "success");
-        return { ...s, deactivated: !isDeactivated };
+  const handleToggleUserBan = async (userId, name) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/ban`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUsers(prev => prev.map(u => {
+          if (u.id === userId) {
+            const newStatus = data.user.status;
+            showToast(`${name} has been ${newStatus === "banned" ? "suspended" : "reactivated"}.`, newStatus === "banned" ? "error" : "success");
+            setStats(s => ({
+              ...s,
+              blockedUsers: s.blockedUsers + (newStatus === "banned" ? 1 : -1),
+            }));
+            return { ...u, status: newStatus };
+          }
+          return u;
+        }));
+      } else {
+        showToast(data.message || "Failed to update user status.", "error");
       }
-      return s;
-    }));
+    } catch (err) {
+      showToast("Network error updating user status.", "error");
+    }
   };
+
+  const handleToggleUserVerify = async (userId, name, isCurrentlyVerified) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/admin/users/${userId}/verify`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ verified: !isCurrentlyVerified }),
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => {
+          if (u.id === userId) {
+            showToast(`${name}'s verification status ${!isCurrentlyVerified ? "granted" : "revoked"}.`, "success");
+            return { ...u, verified: !isCurrentlyVerified };
+          }
+          return u;
+        }));
+      } else {
+        showToast("Failed to update verification status.", "error");
+      }
+    } catch (err) {
+      showToast("Network error updating verification status.", "error");
+    }
+  };
+
+  const handleToggleSkillStatus = async (skillId, name, isDeactivated) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/admin/skills/${skillId}/status`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        setSkills(prev => prev.map(s => {
+          if (s.id === skillId) {
+            showToast(`Skill "${name}" ${!isDeactivated ? "deactivated" : "reactivated"}.`, !isDeactivated ? "error" : "success");
+            return { ...s, deactivated: !isDeactivated };
+          }
+          return s;
+        }));
+      } else {
+        showToast("Failed to update skill status.", "error");
+      }
+    } catch (err) {
+      showToast("Network error updating skill status.", "error");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-muted-foreground animate-pulse text-sm font-semibold">Loading admin panel data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative space-y-6">
@@ -367,7 +499,7 @@ export function Admin() {
       {/* Reports Tab Content */}
       {tab === "Reports" && (
         <div className="space-y-4">
-          {reports.length === 0 ? (
+          {reports.filter(r => r.status === "pending").length === 0 ? (
             <div className="bg-card border border-border rounded-xl px-5 py-12 flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-3">
                 <ShieldCheck size={24} />
@@ -378,7 +510,7 @@ export function Admin() {
               </p>
             </div>
           ) : (
-            reports.map((r) => (
+            reports.filter(r => r.status === "pending").map((r) => (
               <div key={r.id} className="bg-card border border-border rounded-xl px-5 py-4 shadow-sm hover:border-border/80 transition-all">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -386,7 +518,7 @@ export function Admin() {
                       <span className="inline-block px-2.5 py-0.5 rounded-full bg-red-500/15 border border-red-500/20 text-red-400 text-xs font-semibold">
                         {r.type}
                       </span>
-                      <span className="text-xs text-muted-foreground">{r.date}</span>
+                      <span className="text-xs text-muted-foreground">{r.date || "recently"}</span>
                     </div>
                     <p className="text-sm text-foreground mb-1 font-semibold leading-relaxed">
                       <span>{r.reporter}</span>

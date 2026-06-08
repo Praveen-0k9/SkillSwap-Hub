@@ -97,10 +97,12 @@ export function Sidebar({ isOpen, onClose, unreadNotifications = 0, unreadMessag
 
         {/* Bottom */}
         <div className="p-3 border-t border-border space-y-0.5 flex-shrink-0">
-          {bottomItems.map((item) => (
-            <NavItem
-              key={item.path}
-              {...item}
+          {bottomItems
+            .filter((item) => item.path !== "/admin" || (user && user.role === "admin"))
+            .map((item) => (
+              <NavItem
+                key={item.path}
+                {...item}
               isActive={location.pathname === item.path}
               onClick={onClose}
             />
